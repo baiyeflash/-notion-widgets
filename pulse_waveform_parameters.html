@@ -1,20 +1,41 @@
-
-<h2 class="sr-only">Interactive pulse waveform parameter explorer showing rise time, fall time, pulse width, period, and duty cycle</h2>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>脉冲波形参数 - 交互式图解</title>
 <style>
-.ctrl-row{display:flex;align-items:center;gap:10px;margin:6px 0;font-size:13px;color:var(--color-text-secondary)}
-.ctrl-row label{min-width:90px}
-.ctrl-row span{min-width:44px;text-align:right;font-weight:500;color:var(--color-text-primary)}
-.legend{display:flex;flex-wrap:wrap;gap:14px;margin:8px 0 0;font-size:12px;color:var(--color-text-secondary)}
-.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:4px}
-.metric-row{display:flex;gap:10px;margin:10px 0 6px;flex-wrap:wrap}
-.metric{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:8px 14px;flex:1;min-width:110px}
-.metric .lab{font-size:11px;color:var(--color-text-secondary);margin:0}
-.metric .val{font-size:18px;font-weight:500;margin:2px 0 0;color:var(--color-text-primary)}
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #ffffff; --bg2: #f5f4f0; --text1: #2c2c2a; --text2: #5f5e5a; --text3: #888780;
+    --border: rgba(0,0,0,0.12); --font: 'Noto Sans SC', system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a1a; --bg2: #2a2a28; --text1: #e8e6dd; --text2: #b4b2a9; --text3: #888780;
+      --border: rgba(255,255,255,0.12);
+    }
+  }
+  body { font-family: var(--font); background: var(--bg); color: var(--text1); padding: 24px; max-width: 720px; margin: 0 auto; }
+  .metric-row { display: flex; gap: 10px; margin: 14px 0 6px; flex-wrap: wrap; }
+  .metric { background: var(--bg2); border-radius: 10px; padding: 10px 16px; flex: 1; min-width: 120px; }
+  .metric .lab { font-size: 12px; color: var(--text3); margin: 0; }
+  .metric .val { font-size: 20px; font-weight: 500; margin: 2px 0 0; color: var(--text1); }
+  .ctrl-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; font-size: 13px; color: var(--text2); }
+  .ctrl-row label { min-width: 130px; }
+  .ctrl-row span { min-width: 44px; text-align: right; font-weight: 500; color: var(--text1); }
+  input[type=range] { flex: 1; height: 4px; -webkit-appearance: none; appearance: none; background: var(--border); border-radius: 2px; outline: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #378ADD; cursor: pointer; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 12px 0 0; font-size: 12px; color: var(--text3); }
+  .legend i { display: inline-block; width: 16px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
+  h1 { font-size: 18px; font-weight: 500; margin-bottom: 16px; }
 </style>
+</head>
+<body>
+<h1>脉冲波形基本参数 · 交互式图解</h1>
 
-<svg id="wf" width="100%" viewBox="0 0 680 340" role="img">
-<title>Pulse waveform diagram</title>
-<desc>A pulse waveform with annotated parameters</desc>
+<svg id="wf" width="100%" viewBox="0 0 680 340">
 <defs>
 <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
 <marker id="arrowB" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M8 1L2 5L8 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
@@ -22,26 +43,25 @@
 </svg>
 
 <div class="metric-row">
-  <div class="metric"><p class="lab">Period (T)</p><p class="val" id="m-period">—</p></div>
-  <div class="metric"><p class="lab">Frequency (f)</p><p class="val" id="m-freq">—</p></div>
-  <div class="metric"><p class="lab">Pulse width</p><p class="val" id="m-pw">—</p></div>
-  <div class="metric"><p class="lab">Duty cycle</p><p class="val" id="m-dc">—</p></div>
+  <div class="metric"><p class="lab">Period (T) 周期</p><p class="val" id="m-period">—</p></div>
+  <div class="metric"><p class="lab">Frequency (f) 频率</p><p class="val" id="m-freq">—</p></div>
+  <div class="metric"><p class="lab">Pulse width 脉冲宽度</p><p class="val" id="m-pw">—</p></div>
+  <div class="metric"><p class="lab">Duty cycle 占空比</p><p class="val" id="m-dc">—</p></div>
 </div>
 
-<div class="ctrl-row"><label>Duty cycle</label><input type="range" id="sl-dc" min="10" max="90" value="50" step="1" style="flex:1"><span id="v-dc">50%</span></div>
-<div class="ctrl-row"><label>Rise / fall time</label><input type="range" id="sl-edge" min="2" max="30" value="8" step="1" style="flex:1"><span id="v-edge">8%</span></div>
+<div class="ctrl-row"><label>Duty cycle 占空比</label><input type="range" id="sl-dc" min="10" max="90" value="50" step="1"><span id="v-dc">50%</span></div>
+<div class="ctrl-row"><label>Rise / fall time 上升/下降时间</label><input type="range" id="sl-edge" min="2" max="30" value="8" step="1"><span id="v-edge">8%</span></div>
 
 <div class="legend">
-  <span><i style="background:#E24B4A"></i>Rise time (tr)</span>
-  <span><i style="background:#378ADD"></i>Fall time (tf)</span>
-  <span><i style="background:#1D9E75"></i>Pulse width (tw)</span>
-  <span><i style="background:#7F77DD"></i>Period (T)</span>
+  <span><i style="background:#E24B4A"></i>Rise time 上升时间 (tr)</span>
+  <span><i style="background:#378ADD"></i>Fall time 下降时间 (tf)</span>
+  <span><i style="background:#1D9E75"></i>Pulse width 脉冲宽度 (tw)</span>
+  <span><i style="background:#7F77DD"></i>Period 周期 (T)</span>
 </div>
 
 <script>
 const svg = document.getElementById('wf');
 const ns = 'http://www.w3.org/2000/svg';
-
 const W = 680, plotL = 60, plotR = 650, plotW = plotR - plotL;
 const yHi = 60, yLo = 220, yAmp = yLo - yHi;
 const y10 = yLo - yAmp * 0.1, y50 = yLo - yAmp * 0.5, y90 = yLo - yAmp * 0.9;
@@ -65,10 +85,10 @@ function draw() {
   while (svg.childNodes.length > 2) svg.removeChild(svg.lastChild);
 
   const dark = matchMedia('(prefers-color-scheme:dark)').matches;
-  const gridC = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-  const axisC = dark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.18)';
-  const txtC = dark ? '#c2c0b6' : '#5f5e5a';
+  const gridC = dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+  const axisC = dark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.18)';
   const txtC2 = dark ? '#888780' : '#888780';
+  const waveC = dark ? '#d3d1c7' : '#3d3d3a';
   const dashC = dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)';
 
   for (const y of [yHi, y90, y50, y10, yLo]) {
@@ -77,7 +97,7 @@ function draw() {
 
   const labels = [[yHi,'100%'],[y90,'90%'],[y50,'50%'],[y10,'10%'],[yLo,'0%']];
   labels.forEach(([y,t]) => {
-    const txt = el('text',{x:plotL-8, y:y, 'text-anchor':'end','dominant-baseline':'central','font-size':'11px',fill:txtC2,'font-family':'var(--font-sans)'});
+    const txt = el('text',{x:plotL-8,y:y,'text-anchor':'end','dominant-baseline':'central','font-size':'11px',fill:txtC2,'font-family':'inherit'});
     txt.textContent = t;
     svg.appendChild(txt);
   });
@@ -87,24 +107,19 @@ function draw() {
   function buildPulse(x0) {
     const pts = [];
     pts.push([x0, yLo]);
-    const riseStart = x0;
-    const riseEnd = x0 + edgeW;
-    pts.push([riseStart, yLo]);
-    pts.push([riseEnd, yHi]);
-    const fallStart = x0 + tw;
-    const fallEnd = fallStart + edgeW;
-    pts.push([fallStart, yHi]);
-    pts.push([fallEnd, yLo]);
+    pts.push([x0, yLo]);
+    pts.push([x0 + edgeW, yHi]);
+    pts.push([x0 + tw, yHi]);
+    pts.push([x0 + tw + edgeW, yLo]);
     pts.push([x0 + T, yLo]);
-    return {pts, riseStart, riseEnd, fallStart, fallEnd};
+    return {pts, riseStart:x0, riseEnd:x0+edgeW, fallStart:x0+tw, fallEnd:x0+tw+edgeW};
   }
 
   const p1 = buildPulse(plotL);
   const p2 = buildPulse(plotL + T);
   const allPts = [...p1.pts, ...p2.pts.slice(1)];
   const d = allPts.map((p,i) => (i===0?'M':'L') + p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
-
-  svg.appendChild(el('path',{d:d,fill:'none',stroke:dark?'#d3d1c7':'#3d3d3a','stroke-width':'2','stroke-linejoin':'round','stroke-linecap':'round'}));
+  svg.appendChild(el('path',{d:d,fill:'none',stroke:waveC,'stroke-width':'2','stroke-linejoin':'round','stroke-linecap':'round'}));
 
   function dimLine(x1,y1,x2,y2,color,label,labelSide) {
     svg.appendChild(el('line',{x1:x1,y1:y1,x2:x1,y2:y2-2,stroke:dashC,'stroke-width':'0.5','stroke-dasharray':'3 3'}));
@@ -113,7 +128,7 @@ function draw() {
     svg.appendChild(el('line',{x1:x1+2,y1:ay,x2:x2-2,y2:ay,stroke:color,'stroke-width':'1.5','marker-start':'url(#arrowB)','marker-end':'url(#arrow)'}));
     const tx = (x1+x2)/2;
     const ty = labelSide === 'above' ? ay - 8 : ay + 14;
-    const txt = el('text',{x:tx,y:ty,'text-anchor':'middle','font-size':'11px',fill:color,'font-weight':'500','font-family':'var(--font-sans)'});
+    const txt = el('text',{x:tx,y:ty,'text-anchor':'middle','font-size':'11px',fill:color,'font-weight':'500','font-family':'inherit'});
     txt.textContent = label;
     svg.appendChild(txt);
   }
@@ -138,10 +153,10 @@ function draw() {
 
   dimLine(plotL, yLo, plotL + T, yLo + 56, '#7F77DD', 'T (period)', 'below');
 
-  const tLabel = el('text',{x:plotR - 4, y:yLo+16, 'text-anchor':'end','font-size':'11px',fill:txtC2,'font-family':'var(--font-sans)'});
+  const tLabel = el('text',{x:plotR-4,y:yLo+16,'text-anchor':'end','font-size':'11px',fill:txtC2,'font-family':'inherit'});
   tLabel.textContent = 't →';
   svg.appendChild(tLabel);
-  const vLabel = el('text',{x:plotL-8, y:yHi - 14, 'text-anchor':'end','font-size':'11px',fill:txtC2,'font-family':'var(--font-sans)'});
+  const vLabel = el('text',{x:plotL-8,y:yHi-14,'text-anchor':'end','font-size':'11px',fill:txtC2,'font-family':'inherit'});
   vLabel.textContent = 'V';
   svg.appendChild(vLabel);
 
@@ -158,3 +173,5 @@ document.getElementById('sl-dc').addEventListener('input', draw);
 document.getElementById('sl-edge').addEventListener('input', draw);
 draw();
 </script>
+</body>
+</html>
