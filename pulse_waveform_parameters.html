@@ -1,0 +1,160 @@
+
+<h2 class="sr-only">Interactive pulse waveform parameter explorer showing rise time, fall time, pulse width, period, and duty cycle</h2>
+<style>
+.ctrl-row{display:flex;align-items:center;gap:10px;margin:6px 0;font-size:13px;color:var(--color-text-secondary)}
+.ctrl-row label{min-width:90px}
+.ctrl-row span{min-width:44px;text-align:right;font-weight:500;color:var(--color-text-primary)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin:8px 0 0;font-size:12px;color:var(--color-text-secondary)}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:4px}
+.metric-row{display:flex;gap:10px;margin:10px 0 6px;flex-wrap:wrap}
+.metric{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:8px 14px;flex:1;min-width:110px}
+.metric .lab{font-size:11px;color:var(--color-text-secondary);margin:0}
+.metric .val{font-size:18px;font-weight:500;margin:2px 0 0;color:var(--color-text-primary)}
+</style>
+
+<svg id="wf" width="100%" viewBox="0 0 680 340" role="img">
+<title>Pulse waveform diagram</title>
+<desc>A pulse waveform with annotated parameters</desc>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+<marker id="arrowB" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M8 1L2 5L8 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+</defs>
+</svg>
+
+<div class="metric-row">
+  <div class="metric"><p class="lab">Period (T)</p><p class="val" id="m-period">—</p></div>
+  <div class="metric"><p class="lab">Frequency (f)</p><p class="val" id="m-freq">—</p></div>
+  <div class="metric"><p class="lab">Pulse width</p><p class="val" id="m-pw">—</p></div>
+  <div class="metric"><p class="lab">Duty cycle</p><p class="val" id="m-dc">—</p></div>
+</div>
+
+<div class="ctrl-row"><label>Duty cycle</label><input type="range" id="sl-dc" min="10" max="90" value="50" step="1" style="flex:1"><span id="v-dc">50%</span></div>
+<div class="ctrl-row"><label>Rise / fall time</label><input type="range" id="sl-edge" min="2" max="30" value="8" step="1" style="flex:1"><span id="v-edge">8%</span></div>
+
+<div class="legend">
+  <span><i style="background:#E24B4A"></i>Rise time (tr)</span>
+  <span><i style="background:#378ADD"></i>Fall time (tf)</span>
+  <span><i style="background:#1D9E75"></i>Pulse width (tw)</span>
+  <span><i style="background:#7F77DD"></i>Period (T)</span>
+</div>
+
+<script>
+const svg = document.getElementById('wf');
+const ns = 'http://www.w3.org/2000/svg';
+
+const W = 680, plotL = 60, plotR = 650, plotW = plotR - plotL;
+const yHi = 60, yLo = 220, yAmp = yLo - yHi;
+const y10 = yLo - yAmp * 0.1, y50 = yLo - yAmp * 0.5, y90 = yLo - yAmp * 0.9;
+
+function el(tag, attrs) {
+  const e = document.createElementNS(ns, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  return e;
+}
+
+function draw() {
+  const dc = +document.getElementById('sl-dc').value;
+  const edgePct = +document.getElementById('sl-edge').value;
+  document.getElementById('v-dc').textContent = dc + '%';
+  document.getElementById('v-edge').textContent = edgePct + '%';
+
+  const T = plotW / 2;
+  const tw = T * dc / 100;
+  const edgeW = T * edgePct / 100;
+
+  while (svg.childNodes.length > 2) svg.removeChild(svg.lastChild);
+
+  const dark = matchMedia('(prefers-color-scheme:dark)').matches;
+  const gridC = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const axisC = dark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.18)';
+  const txtC = dark ? '#c2c0b6' : '#5f5e5a';
+  const txtC2 = dark ? '#888780' : '#888780';
+  const dashC = dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)';
+
+  for (const y of [yHi, y90, y50, y10, yLo]) {
+    svg.appendChild(el('line', {x1:plotL,y1:y,x2:plotR,y2:y,stroke:gridC,'stroke-width':'0.5'}));
+  }
+
+  const labels = [[yHi,'100%'],[y90,'90%'],[y50,'50%'],[y10,'10%'],[yLo,'0%']];
+  labels.forEach(([y,t]) => {
+    const txt = el('text',{x:plotL-8, y:y, 'text-anchor':'end','dominant-baseline':'central','font-size':'11px',fill:txtC2,'font-family':'var(--font-sans)'});
+    txt.textContent = t;
+    svg.appendChild(txt);
+  });
+
+  svg.appendChild(el('line',{x1:plotL,y1:yLo+1,x2:plotR,y2:yLo+1,stroke:axisC,'stroke-width':'1'}));
+
+  function buildPulse(x0) {
+    const pts = [];
+    pts.push([x0, yLo]);
+    const riseStart = x0;
+    const riseEnd = x0 + edgeW;
+    pts.push([riseStart, yLo]);
+    pts.push([riseEnd, yHi]);
+    const fallStart = x0 + tw;
+    const fallEnd = fallStart + edgeW;
+    pts.push([fallStart, yHi]);
+    pts.push([fallEnd, yLo]);
+    pts.push([x0 + T, yLo]);
+    return {pts, riseStart, riseEnd, fallStart, fallEnd};
+  }
+
+  const p1 = buildPulse(plotL);
+  const p2 = buildPulse(plotL + T);
+  const allPts = [...p1.pts, ...p2.pts.slice(1)];
+  const d = allPts.map((p,i) => (i===0?'M':'L') + p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+
+  svg.appendChild(el('path',{d:d,fill:'none',stroke:dark?'#d3d1c7':'#3d3d3a','stroke-width':'2','stroke-linejoin':'round','stroke-linecap':'round'}));
+
+  function dimLine(x1,y1,x2,y2,color,label,labelSide) {
+    svg.appendChild(el('line',{x1:x1,y1:y1,x2:x1,y2:y2-2,stroke:dashC,'stroke-width':'0.5','stroke-dasharray':'3 3'}));
+    svg.appendChild(el('line',{x1:x2,y1:y1,x2:x2,y2:y2-2,stroke:dashC,'stroke-width':'0.5','stroke-dasharray':'3 3'}));
+    const ay = y2;
+    svg.appendChild(el('line',{x1:x1+2,y1:ay,x2:x2-2,y2:ay,stroke:color,'stroke-width':'1.5','marker-start':'url(#arrowB)','marker-end':'url(#arrow)'}));
+    const tx = (x1+x2)/2;
+    const ty = labelSide === 'above' ? ay - 8 : ay + 14;
+    const txt = el('text',{x:tx,y:ty,'text-anchor':'middle','font-size':'11px',fill:color,'font-weight':'500','font-family':'var(--font-sans)'});
+    txt.textContent = label;
+    svg.appendChild(txt);
+  }
+
+  const rise10x = p1.riseStart + edgeW * 0.1;
+  const rise90x = p1.riseStart + edgeW * 0.9;
+  svg.appendChild(el('circle',{cx:rise10x,cy:y10,r:'3',fill:'#E24B4A',opacity:'0.7'}));
+  svg.appendChild(el('circle',{cx:rise90x,cy:y90,r:'3',fill:'#E24B4A',opacity:'0.7'}));
+  dimLine(rise10x, y10, rise90x, yLo + 30, '#E24B4A', 'tr (rise time)', 'below');
+
+  const fall90x = p1.fallStart + edgeW * 0.1;
+  const fall10x = p1.fallStart + edgeW * 0.9;
+  svg.appendChild(el('circle',{cx:fall90x,cy:y90,r:'3',fill:'#378ADD',opacity:'0.7'}));
+  svg.appendChild(el('circle',{cx:fall10x,cy:y10,r:'3',fill:'#378ADD',opacity:'0.7'}));
+  dimLine(fall90x, y90, fall10x, yLo + 30, '#378ADD', 'tf (fall time)', 'below');
+
+  const pw50start = p1.riseStart + edgeW * 0.5;
+  const pw50end = p1.fallStart + edgeW * 0.5;
+  svg.appendChild(el('circle',{cx:pw50start,cy:y50,r:'3',fill:'#1D9E75',opacity:'0.7'}));
+  svg.appendChild(el('circle',{cx:pw50end,cy:y50,r:'3',fill:'#1D9E75',opacity:'0.7'}));
+  dimLine(pw50start, y50, pw50end, yHi - 28, '#1D9E75', 'tw (pulse width)', 'above');
+
+  dimLine(plotL, yLo, plotL + T, yLo + 56, '#7F77DD', 'T (period)', 'below');
+
+  const tLabel = el('text',{x:plotR - 4, y:yLo+16, 'text-anchor':'end','font-size':'11px',fill:txtC2,'font-family':'var(--font-sans)'});
+  tLabel.textContent = 't →';
+  svg.appendChild(tLabel);
+  const vLabel = el('text',{x:plotL-8, y:yHi - 14, 'text-anchor':'end','font-size':'11px',fill:txtC2,'font-family':'var(--font-sans)'});
+  vLabel.textContent = 'V';
+  svg.appendChild(vLabel);
+
+  const periodMs = 20;
+  const freqHz = Math.round(1000 / periodMs);
+  const pwMs = (periodMs * dc / 100).toFixed(1);
+  document.getElementById('m-period').textContent = periodMs + ' ms';
+  document.getElementById('m-freq').textContent = freqHz + ' Hz';
+  document.getElementById('m-pw').textContent = pwMs + ' ms';
+  document.getElementById('m-dc').textContent = dc + '%';
+}
+
+document.getElementById('sl-dc').addEventListener('input', draw);
+document.getElementById('sl-edge').addEventListener('input', draw);
+draw();
+</script>
